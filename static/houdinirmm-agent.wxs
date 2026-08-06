@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="HoudiniRMM Agent" Language="1033" Version="1.0.0" Manufacturer="HoudiniRMM" UpgradeCode="PUT-GUID-HERE">
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPNOURLUPDATEINSTALL" Value="1" />
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+
+    <!-- Run the install.ps1 silently after files are copied -->
+    <SetProperty Id="RunInstaller" Value="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command &quot;[#install_ps1]&quot;" After="CostFinalize" />
+
+    <CustomAction Id="RunInstaller" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Return="check" Impersonate="no" />
+    <CustomAction Id="Cleanup" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Return="ignore" Impersonate="no" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RunInstaller" After="InstallFiles">NOT Installed</Custom>
+      <Custom Action="Cleanup" After="RunInstaller">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="HoudiniRMM">
+          <Component Id="InstallScript" Guid="PUT-GUID-HERE" Win64="yes">
+            <File Id="install_ps1" Source="install.ps1" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="MainFeature" Title="HoudiniRMM Agent" Level="1" Absent="disallow">
+      <ComponentRef Id="InstallScript" />
+    </Feature>
+  </Product>
+</Wix>
