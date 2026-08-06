@@ -1,0 +1,25 @@
+# Secrets & credentials
+data/
+env/
+.env
+
+# Generated / runtime
+cache/
+out/
+__pycache__/
+*.pyc
+wininstaller/payload/
+wininstaller/rsrc_windows_amd64.syso
+
+# Backup files
+*.bak*
+app.py.bak-*
+
+# OS
+Thumbs.db
+.DS_Store
+*.exe
+*.zip
+
+# Stray
+%{redirect_url}n

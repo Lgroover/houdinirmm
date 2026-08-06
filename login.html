@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>HoudiniRMM · Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#080809;--panel:#111214;--panel2:#18191d;--border:rgba(255,255,255,.08);--text:#f5efe8;--muted:#a4a09b;--accent:#fb8a74;--red:#ef6363;--font:Manrope,system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+body{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px 26px 24px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.brand{text-align:center;margin-bottom:22px}
+.brand img{width:52px;height:52px;border-radius:12px;object-fit:cover;background:rgba(28,18,15,.96);box-shadow:0 14px 30px rgba(251,138,116,.18)}
+.brand h1{margin:12px 0 4px;font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+.brand p{margin:0;color:var(--muted);font-size:.875rem;font-weight:600}
+label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin:0 0 6px}
+input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#1f2025;color:var(--text);font:inherit;margin-bottom:14px}
+input:focus{outline:none;border-color:rgba(251,138,116,.5);box-shadow:0 0 0 3px rgba(251,138,116,.12)}
+button{width:100%;margin-top:4px;padding:12px 14px;border:0;border-radius:11px;font-weight:700;font-size:.9rem;cursor:pointer;color:#1c120f;background:linear-gradient(140deg,rgba(255,240,216,.95),rgba(255,195,143,.75) 35%,#fb8a74);box-shadow:0 14px 30px rgba(251,138,116,.14)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.msg{min-height:1.2em;margin-top:12px;font-size:.8125rem;text-align:center;color:var(--red)}
+.msg.ok{color:#65d38c}
+#totpWrap{display:none}
+#totpWrap.show{display:block}
+.hint{font-size:.75rem;color:var(--muted);margin:-6px 0 12px;font-weight:600}
+</style></head><body>
+<div class="card">
+  <div class="brand">
+    <img src="/dashboard/logo.png" alt="HoudiniRMM" onerror="this.style.display='none'"/>
+    <h1>HoudiniRMM</h1>
+    <p>Sign in to access admin tools</p>
+  </div>
+  <form id="f" autocomplete="on">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" autocomplete="username" required autofocus/>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required/>
+    <div id="totpWrap">
+      <label for="totp">Authenticator code</label>
+      <input id="totp" name="totp" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code"/>
+      <div class="hint">2FA is enabled for this site.</div>
+    </div>
+    <button id="btn" type="submit">Sign in</button>
+    <div class="msg" id="msg"></div>
+  </form>
+</div>
+<script>
+const f=document.getElementById('f');
+const msg=document.getElementById('msg');
+const btn=document.getElementById('btn');
+const totpWrap=document.getElementById('totpWrap');
+let totpRequired=false;
+
+(async function checkTotp(){
+  try{
+    const r=await fetch('/dashboard/api/security/status',{credentials:'include'});
+    const j=await r.json().catch(()=>({}));
+    if(j && j.totp_enabled){
+      totpRequired=true;
+      totpWrap.classList.add('show');
+    }
+  }catch(e){}
+})();
+
+f.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  msg.textContent=''; msg.className='msg';
+  btn.disabled=true;
+  try{
+    if(totpRequired){
+      const code=(document.getElementById('totp').value||'').trim();
+      if(!code){
+        msg.textContent='Authenticator code required';
+        btn.disabled=false;
+        return;
+      }
+    }
+    const r = await fetch('/api/v1/login', {
+      method:'POST',
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value
+      })
+    });
+    const j = await r.json().catch(()=>({}));
+    const okLogin = r.ok && j && j.success === true && j.data && j.data.token;
+    if(!okLogin){
+      msg.textContent = (j && (j.error || j.message)) || ('Sign in failed ('+r.status+')');
+      btn.disabled=false;
+      return;
+    }
+    try{
+      const token = j && j.data && j.data.token;
+      if(token){ localStorage.setItem('token', token); }
+    }catch(err){}
+
+    if(totpRequired){
+      const code=(document.getElementById('totp').value||'').trim();
+      const r2 = await fetch('/dashboard/api/security/verify-totp', {
+        method:'POST',
+        credentials:'include',
+        headers:{
+          'Content-Type':'application/json',
+          'X-Houdini-Internal':'houdini-internal-builder'
+        },
+        body: JSON.stringify({code: code})
+      });
+      const j2 = await r2.json().catch(()=>({}));
+      if(!r2.ok || !j2.ok){
+        try{ localStorage.removeItem('token'); }catch(e){}
+        // best-effort logout
+        try{ await fetch('/api/v1/logout',{method:'POST',credentials:'include'}); }catch(e){}
+        msg.textContent = (j2 && j2.error) || 'Invalid 2FA code';
+        btn.disabled=false;
+        return;
+      }
+    }
+
+    msg.className='msg ok';
+    msg.textContent='Signed in…';
+    var next=(new URLSearchParams(location.search)).get('next')||'/dashboard/#/devices';
+    location.href = next;
+  }catch(err){
+    msg.textContent = String(err);
+    btn.disabled=false;
+  }
+});
+</script>
+</body></html>
