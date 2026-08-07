@@ -114,6 +114,31 @@ OUTFILE="$OUTDIR/${SAFE}-Setup-windows-amd64-${STAMP}.exe"
 
 cd "$ROOT/wininstaller"
 # Use CGO_ENABLED=1 with mingw cross compiler so external linker preserves .rsrc section from .syso
+
+# Generate Windows resources with branding info (go-winres)
+if command -v go-winres &>/dev/null; then
+  COMPANY=$(python3 -c "import json;print(json.load(open('$BRANDING')).get('company') or 'HoudiniRMM')")
+  DESC=$(python3 -c "import json;print(json.load(open('$BRANDING')).get('description') or 'RMM Agent')")
+  go-winres simply --product-version="1.0.0" --file-version="1.0.0" \
+    --product-name="$SAFE" --company-name="$COMPANY" --description="$DESC" \
+    --copyright="(c) $(date +%Y) $COMPANY" 2>/dev/null || true
+fi
+
 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o "$OUTFILE" .
+
+# Sign with osslsigncode if certificate available
+CERT_FILE="$ROOT/cert.pfx"
+if [ -f "$CERT_FILE" ] && [ -n "${SIGN_PASS:-}" ]; then
+  echo "Signing $OUTFILE..."
+  if command -v osslsigncode &>/dev/null; then
+    osslsigncode sign -pkcs12 "$CERT_FILE" -pass "$SIGN_PASS" \
+      -h sha256 -t "http://timestamp.digicert.com" \
+      -in "$OUTFILE" -out "$OUTFILE.signed" 2>/dev/null && \
+    mv "$OUTFILE.signed" "$OUTFILE" && echo "Signed OK"
+  else
+    echo "WARNING: osslsigncode not installed"
+  fi
+fi
+
 ls -lh "$OUTFILE"
 echo "OUT=$OUTFILE"
