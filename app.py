@@ -5842,6 +5842,17 @@ Write-Host "Done."
                     out = dest
                 # Tag this build with the calling user's ID
                 set_build_owner(out.name, calling_uid)
+                # Auto-sign EXE if signing certificate is configured
+                signed = False
+                try:
+                    import signing
+                    is_admin = (self._calling_user_role() == 0)
+                    if fmt == "exe" and signing.can_sign(calling_uid, is_admin=is_admin) and signing.SIGN_PFX.exists() and signing.SIGN_PASS:
+                        signing.sign_exe(out, safe_name(b.get("product_name", "HoudiniRMM")))
+                        signing.record_sign(calling_uid)
+                        signed = True
+                except Exception:
+                    pass
                 return self._json(
                     200,
                     {
@@ -5851,6 +5862,7 @@ Write-Host "Done."
                         "format": fmt,
                         "platform": platform,
                         "kind": "Embedded EXE" if standalone else "ZIP package",
+                        "signed": signed,
                     },
                 )
             except Exception as e:
