@@ -1881,6 +1881,7 @@ a.link{color:var(--accent-strong);font-weight:600}
 .device-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .device-actions .btn{padding:6px 10px;font-size:.75rem}
 .native-view .panel{margin-bottom:14px}
+.native-view{flex:1;min-height:0;overflow:auto}
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(251,138,116,.12);color:var(--accent);font-size:.72rem;font-weight:700;margin:2px 4px 2px 0}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem}
 .table-wrap{overflow:auto}
