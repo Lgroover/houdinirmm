@@ -1873,9 +1873,9 @@ a.link{color:var(--accent-strong);font-weight:600}
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#c9a84c,#8b6914);border-radius:999px}
 ::-webkit-scrollbar-thumb:hover{background:#c9a84c}
 *{scrollbar-width:thin;scrollbar-color:#8b6914 transparent}
-.frame-view{display:flex;flex-direction:column;flex:1;min-height:calc(100dvh - 48px);height:100%}
+.frame-view{display:flex;flex-direction:column;flex:1;min-height:calc(100dvh - 48px);height:100%;overflow:auto}
 .frame-view .page-head{margin-bottom:10px}
-.frame-wrap{flex:1;min-height:calc(100dvh - 160px);height:calc(100dvh - 160px);border:1px solid var(--border);border-radius:var(--radius-xl);overflow:hidden;background:var(--panel-deep);position:relative}
+.frame-wrap{flex:1;min-height:calc(100dvh - 160px);height:calc(100dvh - 160px);border:1px solid var(--border);border-radius:var(--radius-xl);overflow:auto;background:var(--panel-deep);position:relative}
 .frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#080809}
 .mobile-actions{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;max-width:62vw;padding-bottom:4px;scrollbar-width:thin}
 .device-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
@@ -1934,6 +1934,7 @@ a.link{color:var(--accent-strong);font-weight:600}
 <button class="nav-btn" type="button" data-tab="system" data-admin="1" id="navSystem" title="System"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span class="nav-label">System</span></button>
 <button class="nav-btn" type="button" data-tab="security" id="navSecurity" title="Security"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="nav-label">Security</span></button>
 <button class="nav-btn" type="button" data-tab="telegram" id="navTelegram" title="Telegram alerts"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg><span class="nav-label">Telegram</span></button>
+<button class="nav-btn" type="button" data-tab="users" data-admin="1" id="navUsers" title="Users"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Users</span></button>
 <div class="nav-section">Account</div>
 <button class="nav-btn" type="button" data-tab="settings" id="navSettings" title="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-label">Settings</span></button>
 <button class="nav-btn" type="button" data-tab="profile" id="navProfile" title="Profile"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
@@ -2340,7 +2341,7 @@ const NAV_IDS = {
   service:'navService', task:'navTask',
   notification:'navNotification', alert:'navAlert', ddns:'navDdns', nat:'navNat',
   serverGroup:'navServerGroup', notifGroup:'navNotifGroup', transfer:'navTransfer',
-  settings:'navSettings', profile:'navProfile', telegram:'navTelegram'
+  settings:'navSettings', profile:'navProfile', telegram:'navTelegram', users:'navUsers'
 };
 let currentUsername = '';
 let userClaimToken = ''; // claim token for non-admin users' one-liners
