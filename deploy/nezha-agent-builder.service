@@ -1,0 +1,15 @@
+[Unit]
+Description=HoudiniRMM Agent Builder
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/nezha/agent-builder
+EnvironmentFile=/etc/default/houdini-builder
+ExecStart=/usr/bin/python3 /opt/nezha/agent-builder/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
