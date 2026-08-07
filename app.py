@@ -1884,6 +1884,7 @@ a.link{color:var(--accent-strong);font-weight:600}
 .native-view:not(.hidden){display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;padding:0 0 20px 0}
 .native-view .panel{margin:0 0 14px 0}
 .native-view .page-head{margin-bottom:10px}
+#viewScripts .table-wrap{max-height:50vh;overflow:auto}
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(251,138,116,.12);color:var(--accent);font-size:.72rem;font-weight:700;margin:2px 4px 2px 0}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem}
 .table-wrap{overflow:auto}
