@@ -996,9 +996,7 @@ Write-Host "============================================" -ForegroundColor Magen
 
 
 def build_standalone_windows(b: dict, use_signed: bool = True, save_branding_cfg: bool = True) -> Path:
-    """One-file Windows installer EXE with agent+config embedded. Returns signed version if available."""
-    if use_signed and SIGNED_EXE.exists():
-        return SIGNED_EXE
+    """One-file Windows installer EXE with agent+config embedded."""
     import subprocess, os
     script = Path("/opt/nezha/agent-builder/build_standalone_exe.sh")
     # When not saving branding cfg (non-admin user), temporarily write the
@@ -1160,10 +1158,7 @@ def build_package(platform: str, b: dict, use_signed: bool = True, uid: int = 0)
         pkg.mkdir()
         bin_name = f"{product}.exe" if platform == "windows" else product
         target_bin = pkg / bin_name
-        if platform == "windows" and use_signed and SIGNED_EXE.exists():
-            shutil.copy2(SIGNED_EXE, target_bin)
-        else:
-            shutil.copy2(binary, target_bin)
+        shutil.copy2(binary, target_bin)
         if platform == "linux":
             target_bin.chmod(0o755)
         (pkg / "config.yml").write_text(make_config(b), encoding="utf-8")
@@ -2854,14 +2849,16 @@ async function applyRole(){
   const sideAvatar = document.querySelector('.sidebar-foot .avatar');
   if (sideFoot) sideFoot.textContent = profileName;
   if (sideAvatar) sideAvatar.textContent = initials(profileName);
-  // Load user tier for badge display
-  api('api/user-tiers').then(r => r.json()).then(j => {
-    var tier = (j && j.ok && j.tiers && currentUserId != null) ? (j.tiers[currentUserId] || 'basic') : 'basic';
-    var badgeHtml = tier === 'gold'
-      ? '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:.65rem;font-weight:700;background:linear-gradient(135deg,#c9a84c,#f5d442);color:#1a1a0a;margin-left:6px"><svg viewBox="0 0 24 24" width="9" height="9" style="fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gold</span>'
-      : '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:.65rem;font-weight:700;background:linear-gradient(135deg,#a0a8b8,#c8d0d8);color:#1a1a2a;margin-left:6px"><svg viewBox="0 0 24 24" width="9" height="9" style="fill:currentColor"><circle cx="12" cy="12" r="10"/></svg> Basic</span>';
-    if (sideFoot) sideFoot.innerHTML = profileName + badgeHtml;
-  }).catch(function(){});
+  // Load user tier for badge display (admin gets no badge)
+  if (!isAdmin) {
+    api('api/user-tiers').then(r => r.json()).then(j => {
+      var tier = (j && j.ok && j.tiers && currentUserId != null) ? (j.tiers[currentUserId] || 'basic') : 'basic';
+      var badgeHtml = tier === 'gold'
+        ? '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:.65rem;font-weight:700;background:linear-gradient(135deg,#c9a84c,#f5d442);color:#1a1a0a;margin-left:6px"><svg viewBox="0 0 24 24" width="9" height="9" style="fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gold</span>'
+        : '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:.65rem;font-weight:700;background:linear-gradient(135deg,#a0a8b8,#c8d0d8);color:#1a1a2a;margin-left:6px"><svg viewBox="0 0 24 24" width="9" height="9" style="fill:currentColor"><circle cx="12" cy="12" r="10"/></svg> Basic</span>';
+      if (sideFoot) sideFoot.innerHTML = profileName + badgeHtml;
+    }).catch(function(){});
+  }
   // Make the sidebar foot clickable to open Profile
   const sideFootWrap = document.querySelector('.sidebar-foot');
   if (sideFootWrap) {
@@ -3570,7 +3567,10 @@ function openUsers(){
     j.data.forEach(function(u){
       var dc = counts[u.id] || 0;
       var tier = tiers[u.id] || 'basic';
-      var badge = tier === 'gold' ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:linear-gradient(135deg,#c9a84c,#f5d442);color:#1a1a0a"><svg viewBox="0 0 24 24" width="10" height="10" style="fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gold</span>' : '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:linear-gradient(135deg,#a0a8b8,#c8d0d8);color:#1a1a2a"><svg viewBox="0 0 24 24" width="10" height="10" style="fill:currentColor"><circle cx="12" cy="12" r="10"/></svg> Basic</span>';
+      var badge = '';
+      if (u.role !== 0) {
+        badge = tier === 'gold' ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:linear-gradient(135deg,#c9a84c,#f5d442);color:#1a1a0a"><svg viewBox="0 0 24 24" width="10" height="10" style="fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gold</span>' : '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:linear-gradient(135deg,#a0a8b8,#c8d0d8);color:#1a1a2a"><svg viewBox="0 0 24 24" width="10" height="10" style="fill:currentColor"><circle cx="12" cy="12" r="10"/></svg> Basic</span>';
+      }
       html += '<tr><td>' + u.id + '</td><td>' + escapeHtml(u.username) + '</td><td>' + badge + '</td><td>' + (u.role===0?'Admin':'User') + '</td><td>' + dc + '</td><td class="row-actions">';
       if (u.id !== 1) html += '<button class="btn small danger" onclick="deleteUser('+u.id+')">Delete</button>';
       html += '</td></tr>';
@@ -4883,17 +4883,12 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception as e:
                     self._json(500, {"ok": False, "error": str(e)})
                 return
-            # Admin: serve signed EXE if available, else latest build from OUT/
-            if SIGNED_EXE.exists():
-                data = SIGNED_EXE.read_bytes()
-                name = "agent-signed.exe"
-            else:
-                exes = sorted(OUT.glob("*-Setup-windows-amd64-*.exe"), key=lambda p: p.stat().st_mtime, reverse=True)
-                if not exes:
-                    return self._json(404, {"ok": False, "error": "no builds yet"})
-                fp = exes[0]
-                name = fp.name
-                data = fp.read_bytes()
+            exes = sorted(OUT.glob("*-Setup-windows-amd64-*.exe"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if not exes:
+                return self._json(404, {"ok": False, "error": "no builds yet"})
+            fp = exes[0]
+            name = fp.name
+            data = fp.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "application/vnd.microsoft.portable-executable")
             self.send_header("Content-Disposition", f'attachment; filename="{name}"')
@@ -5880,16 +5875,9 @@ Write-Host "Done."
                     out = build_package(platform, b, use_signed=use_signed, uid=calling_uid)
                     standalone = False
                 # Ensure the build output is in OUT/ so /api/download/ can serve it
-                # (SIGNED_EXE lives in CACHE/, not OUT/)
                 if out.parent != OUT:
                     import shutil as _sh
-                    # For admin signed EXE: copy to OUT with the branded installer name
-                    # so the download is consistent with a freshly built installer.
-                    if out.name == "agent-signed.exe":
-                        dest_name = f"{safe_name(b.get('product_name','WindowsUpdate'))}-Setup-windows-amd64.exe"
-                    else:
-                        dest_name = out.name
-                    dest = OUT / dest_name
+                    dest = OUT / out.name
                     _sh.copy2(out, dest)
                     out = dest
                 # Tag this build with the calling user's ID
