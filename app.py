@@ -47,6 +47,20 @@ DASHBOARD = "http://127.0.0.1:8008"
 ADMIN_PASS_FILE = Path("/root/.nezha_admin_pass")
 TG_PATH = DATA / "tg_config.json"
 TG_STATE_PATH = DATA / "tg_state.json"
+USER_TIERS_PATH = DATA / "user_tiers.json"
+
+def load_user_tiers() -> dict:
+    try:
+        return json.loads(USER_TIERS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+def save_user_tiers(data: dict) -> None:
+    USER_TIERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    USER_TIERS_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+def get_user_tier(uid: int) -> str:
+    return load_user_tiers().get(str(uid), "basic")
 
 def load_tg_state() -> dict:
     try:
@@ -2840,6 +2854,14 @@ async function applyRole(){
   const sideAvatar = document.querySelector('.sidebar-foot .avatar');
   if (sideFoot) sideFoot.textContent = profileName;
   if (sideAvatar) sideAvatar.textContent = initials(profileName);
+  // Load user tier for badge display
+  api('api/user-tiers').then(r => r.json()).then(j => {
+    var tier = (j && j.ok && j.tiers && currentUserId != null) ? (j.tiers[currentUserId] || 'basic') : 'basic';
+    var badgeHtml = tier === 'gold'
+      ? '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:.65rem;font-weight:700;background:linear-gradient(135deg,#c9a84c,#f5d442);color:#1a1a0a;margin-left:6px"><svg viewBox="0 0 24 24" width="9" height="9" style="fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gold</span>'
+      : '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:.65rem;font-weight:700;background:linear-gradient(135deg,#a0a8b8,#c8d0d8);color:#1a1a2a;margin-left:6px"><svg viewBox="0 0 24 24" width="9" height="9" style="fill:currentColor"><circle cx="12" cy="12" r="10"/></svg> Basic</span>';
+    if (sideFoot) sideFoot.innerHTML = profileName + badgeHtml;
+  }).catch(function(){});
   // Make the sidebar foot clickable to open Profile
   const sideFootWrap = document.querySelector('.sidebar-foot');
   if (sideFootWrap) {
@@ -3535,17 +3557,21 @@ function openUsers(){
   dg.innerHTML = '<div class="loading">Loading users...</div>';
   Promise.all([
     fetch('/api/v1/user', { credentials:'include' }).then(r => r.json()),
-    api('api/devices').then(r => r.json())
+    api('api/devices').then(r => r.json()),
+    api('api/user-tiers').then(r => r.json())
   ]).then(function(results){
-    var j = results[0], dj = results[1];
+    var j = results[0], dj = results[1], tj = results[2];
     if (!j.success || !Array.isArray(j.data)) { dg.innerHTML = '<p>Failed to load users</p>'; if (um) um.textContent = 'error'; return; }
     var devices = (dj && dj.devices) || [];
+    var tiers = (tj && tj.ok && tj.tiers) || {};
     var counts = {};
     devices.forEach(function(d){ var oid = d._owner_id || 0; counts[oid] = (counts[oid]||0)+1; });
-    let html = '<table class="mgr-tbl"><thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Devices</th><th>Actions</th></tr></thead><tbody>';
+    let html = '<table class="mgr-tbl"><thead><tr><th>ID</th><th>Username</th><th>Tier</th><th>Role</th><th>Devices</th><th>Actions</th></tr></thead><tbody>';
     j.data.forEach(function(u){
       var dc = counts[u.id] || 0;
-      html += '<tr><td>' + u.id + '</td><td>' + escapeHtml(u.username) + '</td><td>' + (u.role===0?'Admin':'User') + '</td><td>' + dc + '</td><td class="row-actions">';
+      var tier = tiers[u.id] || 'basic';
+      var badge = tier === 'gold' ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:linear-gradient(135deg,#c9a84c,#f5d442);color:#1a1a0a"><svg viewBox="0 0 24 24" width="10" height="10" style="fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gold</span>' : '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:linear-gradient(135deg,#a0a8b8,#c8d0d8);color:#1a1a2a"><svg viewBox="0 0 24 24" width="10" height="10" style="fill:currentColor"><circle cx="12" cy="12" r="10"/></svg> Basic</span>';
+      html += '<tr><td>' + u.id + '</td><td>' + escapeHtml(u.username) + '</td><td>' + badge + '</td><td>' + (u.role===0?'Admin':'User') + '</td><td>' + dc + '</td><td class="row-actions">';
       if (u.id !== 1) html += '<button class="btn small danger" onclick="deleteUser('+u.id+')">Delete</button>';
       html += '</td></tr>';
     });
@@ -3556,10 +3582,16 @@ function openUsers(){
 }
 function createUserModal(){
   promptModal({ title:'Create User', okText:'Create',
-    fields:[{key:'username', label:'Username', value:''},{key:'password', label:'Password', value:''},{key:'role', label:'Role (0=admin,1=user)', value:'1'}] }).then(function(res){
+    fields:[
+      {key:'username', label:'Username', value:''},
+      {key:'password', label:'Password', value:''},
+      {key:'role', label:'Role (0=admin,1=user)', value:'1'},
+      {key:'tier', label:'Tier (basic / gold)', value:'basic'}
+    ]}).then(function(res){
     if (!res) return;
     const role = parseInt(res.role,10) || 1;
-    api('/api/users/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:res.username, password:res.password, role:role}) })
+    const tier = res.tier || 'basic';
+    api('/api/users/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:res.username, password:res.password, role:role, tier:tier}) })
       .then(r => r.json()).then(j => { if(j.ok) openUsers(); else alertModal({title:'Error', body:j.error||'Failed'}); });
   });
 }
@@ -5063,6 +5095,20 @@ Write-Host "Done."
             return
 
 
+        if path == "/api/signing/status":
+            uid = self._calling_user_id() or 0
+            is_admin = (self._calling_user_role() == 0)
+            try:
+                import signing
+                info = signing.get_sign_remaining(uid, is_admin=is_admin)
+                info["pfx_available"] = signing.SIGN_PFX.exists()
+                return self._json(200, {"ok": True, "signing": info})
+            except Exception as e:
+                return self._json(200, {"ok": True, "signing": {"error": str(e), "pfx_available": False}})
+
+        if path == "/api/user-tiers":
+            return self._json(200, {"ok": True, "tiers": load_user_tiers()})
+
         if path == "/api/audit":
             prof_a = self._calling_user_profile()
             if prof_a is None:
@@ -5312,13 +5358,21 @@ Write-Host "Done."
             username = (body.get("username") or "").strip()
             password = body.get("password") or ""
             role = body.get("role", 1)
+            tier = (body.get("tier") or "basic").strip()
             if not username or not password:
                 return self._json(400, {"ok": False, "error": "username and password are required"})
             res = create_user(username, password, role)
             if not res.get("success"):
                 return self._json(400, {"ok": False, "error": res.get("error") or str(res)})
-            hf.audit("user.create", {"username": username, "role": role}, actor=self._calling_username())
-            return self._json(200, {"ok": True, "id": res.get("data")})
+            uid = res.get("data")
+            if isinstance(uid, dict):
+                uid = uid.get("id") or uid.get("data")
+            if uid:
+                tiers = load_user_tiers()
+                tiers[str(uid)] = tier
+                save_user_tiers(tiers)
+            hf.audit("user.create", {"username": username, "role": role, "tier": tier}, actor=self._calling_username())
+            return self._json(200, {"ok": True, "id": uid})
 
         if path.startswith("/api/users/update/"):
             rid = path[len("/api/users/update/") :].strip("/")
